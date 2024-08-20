@@ -1,3 +1,7 @@
+"""
+
+https://github.com/allenai/objaverse-rendering
+"""
 import glob
 import json
 import multiprocessing
@@ -36,6 +40,7 @@ def worker(
     gpu: int,
     s3: Optional[boto3.client],
 ) -> None:
+    # print(1)
     while True:
         item = queue.get()
         if item is None:
@@ -43,11 +48,17 @@ def worker(
 
         # Perform some operation on the item
         print(item, gpu)
+        # command = (
+        #     f"export DISPLAY=:0.{gpu} &&"
+        #     f" blender-3.2.2-linux-x64/blender -b -P scripts/blender_script_qys.py --"
+        #     f" --object_path {item}"
+        # )
         command = (
-            f"export DISPLAY=:0.{gpu} &&"
-            f" blender-3.2.2-linux-x64/blender -b -P scripts/blender_script.py --"
+            f"CUDA_VISIBLE_DEVICES={gpu} "
+            f" python scripts/blender_script_qys.py --"
             f" --object_path {item}"
         )
+        
         subprocess.run(command, shell=True)
 
         if args.upload_to_s3:

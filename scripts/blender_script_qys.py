@@ -1,4 +1,7 @@
-"""Blender script to render images of 3D models.
+"""
+This code is from https://github.com/allenai/objaverse-rendering
+
+Blender script to render images of 3D models.
 
 This script is used to render images of 3D models. It takes in a list of paths
 to .glb files and renders images of each model. The images are from rotating the
@@ -27,6 +30,9 @@ from typing import Tuple
 
 import bpy
 from mathutils import Vector
+from PIL import Image
+
+import numpy as np
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -35,12 +41,15 @@ parser.add_argument(
     required=True,
     help="Path to the object file",
 )
-parser.add_argument("--output_dir", type=str, default="./views")
+parser.add_argument("--output_dir", type=str, default="/data/qys/objectverse-lvis/Lvis_rendering/")
 parser.add_argument(
-    "--engine", type=str, default="BLENDER_EEVEE", choices=["CYCLES", "BLENDER_EEVEE"]
+    "--engine", type=str, default="CYCLES", choices=["CYCLES", "BLENDER_EEVEE"]
 )
 parser.add_argument("--num_images", type=int, default=12)
-parser.add_argument("--camera_dist", type=int, default=1.5)
+parser.add_argument("--resolution", type=int, default=320) #512
+parser.add_argument("--camera_dist", type=int, default=(0.5 / np.tan(np.radians(30/2))))
+# parser.add_argument("--camera_dist", type=int, default=4)
+
 
 argv = sys.argv[sys.argv.index("--") + 1 :]
 args = parser.parse_args(argv)
@@ -49,15 +58,26 @@ context = bpy.context
 scene = context.scene
 render = scene.render
 
+def set_background_color(color=(1, 1, 1)):
+    """Set the world background color in Blender."""
+    bpy.data.worlds["World"].use_nodes = True
+    bg = bpy.data.worlds["World"].node_tree.nodes.get('Background')
+    if not bg:
+        bg = bpy.data.worlds["World"].node_tree.nodes.new('ShaderNodeBackground')
+    bg.inputs[0].default_value = (*color, 1)  # RGBA, where A is mostly ignored
+
+
+
 render.engine = args.engine
 render.image_settings.file_format = "PNG"
 render.image_settings.color_mode = "RGBA"
-render.resolution_x = 512
-render.resolution_y = 512
+# instant mesh 和zero123++都是320*320的
+render.resolution_x = args.resolution
+render.resolution_y = args.resolution
 render.resolution_percentage = 100
 
 scene.cycles.device = "GPU"
-scene.cycles.samples = 32
+scene.cycles.samples = 128
 scene.cycles.diffuse_bounces = 1
 scene.cycles.glossy_bounces = 1
 scene.cycles.transparent_max_bounces = 3
@@ -65,6 +85,8 @@ scene.cycles.transmission_bounces = 3
 scene.cycles.filter_width = 0.01
 scene.cycles.use_denoising = True
 scene.render.film_transparent = True
+
+
 
 
 def sample_point_on_sphere(radius: float) -> Tuple[float, float, float]:
@@ -160,18 +182,70 @@ def normalize_scene():
     for obj in scene_root_objects():
         obj.matrix_world.translation += offset
     bpy.ops.object.select_all(action="DESELECT")
+    
+    print("cube")
 
+
+def normalize_scene_to_sphere():
+    bbox_min, bbox_max = scene_bbox()
+    
+    # 计算包围盒的中心和最大半径（从中心到包围盒角点的最大距离）
+    bbox_center = (bbox_min + bbox_max) / 2
+    max_distance = max((bbox_max - bbox_center).length, (bbox_center - bbox_min).length)
+    
+    # 计算缩放因子，使得最大距离为0.5
+    scale = 0.5 / max_distance
+    
+    # 对每个对象应用缩放
+    for obj in scene_root_objects():
+        obj.scale = obj.scale * scale
+    
+    # 更新场景以应用缩放
+    bpy.context.view_layer.update()
+    
+    # 重新计算包围盒
+    bbox_min, bbox_max = scene_bbox()
+    bbox_center = (bbox_min + bbox_max) / 2
+    
+    # 计算偏移量，使得对象中心位于原点
+    offset = -bbox_center
+    
+    # 对每个对象应用偏移
+    for obj in scene_root_objects():
+        obj.matrix_world.translation += offset
+    
+    # 取消所有对象的选中状态
+    bpy.ops.object.select_all(action="DESELECT")
+    print("sphere")
 
 def setup_camera():
     cam = scene.objects["Camera"]
-    cam.location = (0, 1.2, 0)
-    cam.data.lens = 35
+    cam.location = (0, 0.5 / np.tan(np.radians(30/2)), 0)
+    cam.data.lens = 55.42 #35
     cam.data.sensor_width = 32
     cam_constraint = cam.constraints.new(type="TRACK_TO")
     cam_constraint.track_axis = "TRACK_NEGATIVE_Z"
     cam_constraint.up_axis = "UP_Y"
     return cam, cam_constraint
 
+
+def process_image(image_path):
+    """ Process the image to fill alpha=1 with white and save as RGB. """
+    with Image.open(image_path) as img:
+        # Convert to RGBA if not already
+        img = img.convert("RGBA")
+
+        # Create a new image with white background
+        background = Image.new('RGBA', img.size, (255, 255, 255, 255))
+        # Composite the two images together
+        combined = Image.alpha_composite(background, img)
+        # Convert to RGB
+        rgb_image = combined.convert("RGB")
+        
+        # Save the image
+        # rgb_image.save(image_path.replace('.png', '_rgb.png'))
+        rgb_image.save(image_path)
+        
 
 def save_images(object_file: str) -> None:
     """Saves rendered images of the object in the scene."""
@@ -180,7 +254,8 @@ def save_images(object_file: str) -> None:
     # load the object
     load_object(object_file)
     object_uid = os.path.basename(object_file).split(".")[0]
-    normalize_scene()
+    # normalize_scene()
+    normalize_scene_to_sphere()
     add_lighting()
     cam, cam_constraint = setup_camera()
     # create an empty object to track
@@ -201,6 +276,91 @@ def save_images(object_file: str) -> None:
         render_path = os.path.join(args.output_dir, object_uid, f"{i:03d}.png")
         scene.render.filepath = render_path
         bpy.ops.render.render(write_still=True)
+        process_image(render_path)
+
+def save_images_6view(object_file: str, save_query_view: bool = False) -> None:
+    """Saves rendered images of the object in the scene."""
+    os.makedirs(args.output_dir, exist_ok=True)
+    reset_scene()
+    # load the object
+    load_object(object_file)
+    object_uid = os.path.basename(object_file).split(".")[0]
+    # normalize_scene()
+    normalize_scene_to_sphere()
+    add_lighting()
+    cam, cam_constraint = setup_camera()
+    # create an empty object to track
+    empty = bpy.data.objects.new("Empty", None)
+    scene.collection.objects.link(empty)
+    cam_constraint.target = empty
+    # 固定的方位角和仰角
+    azimuths = np.array([30, 90, 150, 210, 270, 330])
+    elevations = np.array([20, -10, 20, -10, 20, -10])
+
+    for i in range(len(azimuths)):
+        # 将角度转换为弧度
+        theta = np.radians(azimuths[i])
+        phi = np.radians(elevations[i])
+        # 根据球坐标公式计算相机位置
+        point = (
+            args.camera_dist * np.cos(phi) * np.cos(theta),
+            args.camera_dist * np.cos(phi) * np.sin(theta),
+            args.camera_dist * np.sin(phi),
+        )
+        cam.location = point
+        # 渲染图像
+        render_path = os.path.join(args.output_dir, object_uid, f"{i:03d}.png")
+        scene.render.filepath = render_path
+        bpy.ops.render.render(write_still=True)
+        process_image(render_path)
+    
+    if save_query_view:
+        """
+            Saves 
+                1. query image(random) 
+                2. 0 elavation image 
+            of the object in the scene.
+        """
+        
+        # 参照InstantMesh的finetune 方案 https://github.com/TencentARC/InstantMesh/issues/114
+        
+        # 从 [0, 360] 随机取一个 theta 值  # 从 [-20, 45] 随机取一个 phi 值
+        theta = np.radians(np.random.uniform(0, 360))
+        phi = np.radians(np.random.uniform(-20, 45))
+        # 从 [1.25, 2.5] 随机取一个 camera_dist 值， 因为InstantMesh是单位化到[-1,1]的单位圆，而我们是[-0.5,+0.5]所以距离除以2
+        camera_dist = np.random.uniform(1.25, 2.5)
+        # 根据球坐标公式计算相机位置
+        point = (
+            camera_dist * np.cos(phi) * np.cos(theta),
+            camera_dist * np.cos(phi) * np.sin(theta),
+            camera_dist * np.sin(phi),
+        )
+        cam.location = point
+        render_path = os.path.join(args.output_dir, object_uid, "query.png")
+        scene.render.filepath = render_path
+        bpy.ops.render.render(write_still=True)
+        process_image(render_path)
+        
+        
+        # 从0旋转角0俯仰角看 渲染一个图
+        theta = np.radians(0)
+        phi = np.radians(0)
+        # 相机距离采用target image的同样距离
+        camera_dist = args.camera_dist
+        # 根据球坐标公式计算相机位置
+        theta = np.radians(theta)
+        phi = np.radians(phi)
+        point = (
+            camera_dist * np.cos(phi) * np.cos(theta),
+            camera_dist * np.cos(phi) * np.sin(theta),
+            camera_dist * np.sin(phi),
+        )
+        cam.location = point
+        render_path = os.path.join(args.output_dir, object_uid, "query0.png")
+        scene.render.filepath = render_path
+        bpy.ops.render.render(write_still=True)
+        process_image(render_path)
+
 
 
 def download_object(object_url: str) -> str:
@@ -225,7 +385,13 @@ if __name__ == "__main__":
             local_path = download_object(args.object_path)
         else:
             local_path = args.object_path
-        save_images(local_path)
+            
+        
+        # # 在主函数或适当的位置调用该函数以设置背景颜色
+        # set_background_color()  # 默认为白色
+        save_images_6view(local_path,  save_query_view=True)
+        
+        # 保存输入图片和0度图片
         end_i = time.time()
         print("Finished", local_path, "in", end_i - start_i, "seconds")
         # delete the object if it was downloaded
