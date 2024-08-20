@@ -245,6 +245,24 @@ def process_image(image_path):
         # Save the image
         # rgb_image.save(image_path.replace('.png', '_rgb.png'))
         rgb_image.save(image_path)
+
+def process_image_newpath(image_path, new_image_path):
+    """ Process the image to fill alpha=1 with white and save as RGB. """
+    with Image.open(image_path) as img:
+        # Convert to RGBA if not already
+        img = img.convert("RGBA")
+
+        # Create a new image with white background
+        background = Image.new('RGBA', img.size, (255, 255, 255, 255))
+        # Composite the two images together
+        combined = Image.alpha_composite(background, img)
+        # Convert to RGB
+        rgb_image = combined.convert("RGB")
+        
+        # Save the image
+        # rgb_image.save(image_path.replace('.png', '_rgb.png'))
+        rgb_image.save(new_image_path)
+            
         
 
 def save_images(object_file: str) -> None:
@@ -336,10 +354,11 @@ def save_images_6view(object_file: str, save_query_view: bool = False) -> None:
             camera_dist * np.sin(phi),
         )
         cam.location = point
-        render_path = os.path.join(args.output_dir, object_uid, "query.png")
+        render_path = os.path.join(args.output_dir, object_uid, "query_rgba.png")
+        render_path_processed = os.path.join(args.output_dir, object_uid, "query.png")
         scene.render.filepath = render_path
         bpy.ops.render.render(write_still=True)
-        process_image(render_path)
+        process_image_newpath(render_path, render_path_processed)
         
         
         # 从0旋转角0俯仰角看 渲染一个图
@@ -356,11 +375,11 @@ def save_images_6view(object_file: str, save_query_view: bool = False) -> None:
             camera_dist * np.sin(phi),
         )
         cam.location = point
-        render_path = os.path.join(args.output_dir, object_uid, "query0.png")
+        render_path = os.path.join(args.output_dir, object_uid, "query0_rgba.png")
+        render_path_processed = os.path.join(args.output_dir, object_uid, "query0.png")
         scene.render.filepath = render_path
         bpy.ops.render.render(write_still=True)
-        process_image(render_path)
-
+        process_image_newpath(render_path, render_path_processed)
 
 
 def download_object(object_url: str) -> str:
