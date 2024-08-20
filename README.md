@@ -3,11 +3,6 @@
 
 Scripts to perform distributed rendering of Objaverse objects in Blender across many GPUs and processes.
 
-### System requirements
-
-We have only tested the rendering scripts on Ubuntu machines that have NVIDIA GPUs.
-
-If you run into any issues, please open an issue! :)
 
 ### Installation
 
@@ -54,7 +49,7 @@ python3 scripts/download_objaverse.py --start_i 0 --end_i 100
 ```bash
 python3 scripts/distributed.py \
   --num_gpus <NUM_GPUs> \
-  --workers_per_gpu <WORKERS_PER_GPU> \
+  --workers_per_gpu <WORKERS_PER_GPU=8> \
   --input_models_path <INPUT_MODELS_PATH>
 ```
 
