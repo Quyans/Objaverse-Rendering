@@ -63,3 +63,7 @@ We also use [AWS S3](https://aws.amazon.com/s3/) to upload the rendered images. 
 
 
 
+### Acknowledgements
+
+This code is from https://github.com/allenai/objaverse-rendering 
+Thanks for the great work!
