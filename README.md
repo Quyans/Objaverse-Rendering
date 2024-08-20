@@ -50,7 +50,7 @@ python3 scripts/download_objaverse.py --start_i 0 --end_i 100
 python3 scripts/distributed.py \
   --num_gpus <NUM_GPUs=4> \
   --workers_per_gpu <WORKERS_PER_GPU=8> \
-  --input_models_path <INPUT_MODELS_PATH>
+  --input_models_path <INPUT_MODELS_PATH=xxx.json>
 ```
 
 This will then render the images into the `views` directory.
