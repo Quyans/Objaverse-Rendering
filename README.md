@@ -1,3 +1,4 @@
+
 # Objaverse Rendering
 
 Scripts to perform distributed rendering of Objaverse objects in Blender across many GPUs and processes.
@@ -65,13 +66,5 @@ In the `scripts/distributed.py` script, we use [Wandb](https://wandb.ai/site) to
 
 We also use [AWS S3](https://aws.amazon.com/s3/) to upload the rendered images. You can create a free account and then set the `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` environment variables to your credentials.
 
-### 👋 Our Team
 
-Objaverse is an open-source project built by the [PRIOR team](//prior.allenai.org) at the [Allen Institute for AI](//allenai.org) (AI2).
-AI2 is a non-profit institute with the mission to contribute to humanity through high-impact AI research and engineering.
 
-<br />
-
-<a href="//prior.allenai.org">
-<p align="center"><img width="100%" src="https://raw.githubusercontent.com/allenai/ai2thor/main/doc/static/ai2-prior.svg" /></p>
-</a>
