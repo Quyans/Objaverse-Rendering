@@ -30,8 +30,6 @@ unique_strings_list = list(unique_strings)
 print("总长度是",len(unique_strings_list))   #LVIS总长度 46207
 
 
-
-
 """
 单线程
 """
@@ -68,13 +66,11 @@ print("总长度是",len(unique_strings_list))   #LVIS总长度 46207
 """
 多线程
 """
-
-
 # 根目录路径
 root_folder = '/data/qys/objectverse-lvis/objaverse/glbs'
 
 # 目标文件夹
-destination_folder = 'objavese-lvis-subset_full'
+destination_folder = 'objavese-lvis-subset_full_test'
 
 # 确保目标文件夹存在
 os.makedirs(destination_folder, exist_ok=True)
@@ -100,16 +96,15 @@ def copy_file(file_name):
     if not file_found:
         print(f'{file_name}.glb not found in any subfolder of {root_folder}')
 
-# 使用 ThreadPoolExecutor 进行多线程处理
+
 with ThreadPoolExecutor(max_workers=10) as executor:
     # 提交所有的文件复制任务
     future_to_file = {executor.submit(copy_file, file_name): file_name for file_name in unique_strings_list}
     
-    # 处理任务完成
     for future in as_completed(future_to_file):
         file_name = future_to_file[future]
         try:
-            future.result()  # 如果有异常，这里会抛出
+            future.result() 
         except Exception as e:
             print(f'Error processing {file_name}: {e}')
 

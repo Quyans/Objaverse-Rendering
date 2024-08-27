@@ -1,3 +1,10 @@
+"""
+  Usage:
+    export HF_ENDPOINT=https://hf-mirror.com
+    ./clone-dataset.sh
+
+""" 
+
 # 定义变量
 MAX_RETRIES=500
 RETRY_COUNT=0

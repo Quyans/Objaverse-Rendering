@@ -7,7 +7,7 @@ import os
 import shutil
 from PIL import Image
 from concurrent.futures import ThreadPoolExecutor
-
+from tqdm import tqdm
 
 def concatenate_images(image_paths, output_path):
     images = [Image.open(img_path) for img_path in image_paths]
@@ -46,30 +46,38 @@ def copy_queries(folder_path, new_folder_path):
             print(f'File {file_name} not found in {folder_path}')
 
 def process_folder(folder_path, new_folder_path):
-        if os.path.isdir(folder_path):
-            image_files = sorted([os.path.join(folder_path, f) for f in os.listdir(folder_path) if f.endswith('.png') and f.startswith(('000', '001', '002', '003', '004', '005'))])
-            if len(image_files) == 6:
-                output_path = os.path.join(new_folder_path, 'target.png')
-                concatenate_images(image_files, output_path)
-                # print(f'Created concatenated image at {output_path}')
-            # 复制query.png 和 query_rgba.png
-            copy_queries(folder_path, new_folder_path)
+    if os.path.isdir(folder_path):
+        image_files = sorted([os.path.join(folder_path, f) for f in os.listdir(folder_path) if f.endswith('.png') and f.startswith(('000', '001', '002', '003', '004', '005'))])
+        if len(image_files) == 6:
+            output_path = os.path.join(new_folder_path, 'target.png')
+            concatenate_images(image_files, output_path)
+            # print(f'Created concatenated image at {output_path}')
+        # 复制query.png 和 query_rgba.png
+        copy_queries(folder_path, new_folder_path)
     
+
+# def process_folders_concurrently(root_dir, new_root_dir, max_workers=16):
+#     with ThreadPoolExecutor(max_workers=max_workers) as executor:
+#         futures = []
+#         for subdir in os.listdir(root_dir):
+#             folder_path = os.path.join(root_dir, subdir)
+#             new_folder_path = os.path.join(new_root_dir, subdir)
+#             # Submit the folder for processing in a separate thread
+#             futures.append(executor.submit(process_folder, folder_path, new_folder_path))
+
+#         # Wait for all threads to complete
+#         for future in futures:
+#             future.result()  # This will raise exceptions from the thread if any occurred
 
 def process_folders_concurrently(root_dir, new_root_dir, max_workers=16):
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        futures = []
-        for subdir in os.listdir(root_dir):
-            folder_path = os.path.join(root_dir, subdir)
-            new_folder_path = os.path.join(new_root_dir, subdir)
-            # Submit the folder for processing in a separate thread
-            futures.append(executor.submit(process_folder, folder_path, new_folder_path))
-
-        # Wait for all threads to complete
-        for future in futures:
-            future.result()  # This will raise exceptions from the thread if any occurred
+        folder_paths = [os.path.join(root_dir, subdir) for subdir in os.listdir(root_dir)]
+        new_folder_paths = [os.path.join(new_root_dir, subdir) for subdir in os.listdir(root_dir)]
+        # 使用tqdm创建进度条
+        results = list(tqdm(executor.map(process_folder, folder_paths, new_folder_paths), total=len(folder_paths)))
 
 
-root_directory = '/data/qys/test/testrender'  # 修改为你的原始根目录路径
-new_root_directory = '/data/qys/test/testrender2'  # 修改为你的新根目录路径
+
+root_directory = '/data/qys/objectverse-lvis/Lvis_rendering_Full'  # 修改为你的原始根目录路径
+new_root_directory = '/data/qys/objectverse-lvis/deocc123_LVIS_full'  # 修改为你的新根目录路径
 process_folders_concurrently(root_directory, new_root_directory)

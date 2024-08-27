@@ -55,7 +55,7 @@ def worker(
         # )
         command = (
             f"CUDA_VISIBLE_DEVICES={gpu} "
-            f" python scripts/blender_script_qys.py --"
+            f" python scripts/blender_script_cube.py --"
             f" --object_path {item}"
         )
         
