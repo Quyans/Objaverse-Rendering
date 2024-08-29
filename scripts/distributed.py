@@ -24,6 +24,9 @@ class Args:
     input_models_path: str
     """Path to a json file containing a list of 3D object files"""
 
+    finish_models_path: str = None
+    """Path to a txt file containing a list of 3D object files that are already finished"""
+    
     upload_to_s3: bool = False
     """Whether to upload the rendered images to S3"""
 
@@ -32,6 +35,8 @@ class Args:
 
     num_gpus: int = -1
     """number of gpus to use. -1 means all available gpus"""
+    
+
 
 
 def worker(
@@ -100,6 +105,13 @@ if __name__ == "__main__":
     # Add items to the queue
     with open(args.input_models_path, "r") as f:
         model_paths = json.load(f)
+    
+    if args.finish_models_path is not None:
+        # 从 txt 文件中读取数据
+        with open(args.finish_models_path, 'r') as f:
+            finished_model_paths = set(f.read().splitlines())  # 使用 set 来快速检索
+        model_paths = [item for item in model_paths if item not in finished_model_paths]
+
     for item in model_paths:
         queue.put(item)
 

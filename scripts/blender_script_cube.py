@@ -31,7 +31,7 @@ from typing import Tuple
 import bpy
 from mathutils import Vector
 from PIL import Image
-
+import os
 import numpy as np
 
 parser = argparse.ArgumentParser()
@@ -41,18 +41,19 @@ parser.add_argument(
     required=True,
     help="Path to the object file",
 )
-parser.add_argument("--output_dir", type=str, default="/data/qys/objectverse-lvis/Lvis_rendering_cube_fixdistance/")
+parser.add_argument("--base_dir", type=str, default="/data/qys/objectverse-lvis/Lvis_rendering_cube_fixdistance_highreso/")
 parser.add_argument(
     "--engine", type=str, default="CYCLES", choices=["CYCLES", "BLENDER_EEVEE"]
 )
 parser.add_argument("--num_images", type=int, default=12)
-parser.add_argument("--resolution", type=int, default=320) #512
+parser.add_argument("--resolution", type=int, default=768) #512
 parser.add_argument("--camera_dist", type=int, default=(0.5 / np.tan(np.radians(30/2))))
 # parser.add_argument("--camera_dist", type=int, default=4)
 
 
 argv = sys.argv[sys.argv.index("--") + 1 :]
 args = parser.parse_args(argv)
+args.output_dir = os.path.join(args.base_dir, "images")
 
 context = bpy.context
 scene = context.scene
@@ -77,7 +78,7 @@ render.resolution_y = args.resolution
 render.resolution_percentage = 100
 
 scene.cycles.device = "GPU"
-scene.cycles.samples = 128
+scene.cycles.samples = 500
 scene.cycles.diffuse_bounces = 1
 scene.cycles.glossy_bounces = 1
 scene.cycles.transparent_max_bounces = 3
@@ -86,7 +87,12 @@ scene.cycles.filter_width = 0.01
 scene.cycles.use_denoising = True
 scene.render.film_transparent = True
 
-
+# Set the device_type
+cycles_preferences = bpy.context.preferences.addons["cycles"].preferences
+cycles_preferences.compute_device_type = "CUDA"  # or "OPENCL"
+cuda_devices = cycles_preferences.get_devices_for_type("CUDA")
+for device in cuda_devices:
+    device.use = True
 
 
 def sample_point_on_sphere(radius: float) -> Tuple[float, float, float]:
@@ -98,6 +104,19 @@ def sample_point_on_sphere(radius: float) -> Tuple[float, float, float]:
         radius * math.cos(phi),
     )
 
+# 这是之前渲染的方案
+# def add_lighting() -> None:
+#     # delete the default light
+#     bpy.data.objects["Light"].select_set(True)
+#     bpy.ops.object.delete()
+#     # add a new light
+#     bpy.ops.object.light_add(type="AREA")
+#     light2 = bpy.data.lights["Area"]
+#     light2.energy = 30000
+#     bpy.data.objects["Area"].location[2] = 0.5
+#     bpy.data.objects["Area"].scale[0] = 100
+#     bpy.data.objects["Area"].scale[1] = 100
+#     bpy.data.objects["Area"].scale[2] = 100
 
 def add_lighting() -> None:
     # delete the default light
@@ -107,10 +126,13 @@ def add_lighting() -> None:
     bpy.ops.object.light_add(type="AREA")
     light2 = bpy.data.lights["Area"]
     light2.energy = 30000
+    bpy.data.objects["Area"].location[0] = 0
+    bpy.data.objects["Area"].location[1] = 1
     bpy.data.objects["Area"].location[2] = 0.5
-    bpy.data.objects["Area"].scale[0] = 100
-    bpy.data.objects["Area"].scale[1] = 100
-    bpy.data.objects["Area"].scale[2] = 100
+    
+    bpy.data.objects["Area"].scale[0] = 200
+    bpy.data.objects["Area"].scale[1] = 200
+    bpy.data.objects["Area"].scale[2] = 200
 
 
 def reset_scene() -> None:
@@ -183,7 +205,7 @@ def normalize_scene():
         obj.matrix_world.translation += offset
     bpy.ops.object.select_all(action="DESELECT")
     
-    print("cube")
+    # print("cube")
 
 
 def normalize_scene_to_sphere():
@@ -216,7 +238,7 @@ def normalize_scene_to_sphere():
     
     # 取消所有对象的选中状态
     bpy.ops.object.select_all(action="DESELECT")
-    print("sphere")
+    # print("sphere")
 
 def setup_camera():
     cam = scene.objects["Camera"]
@@ -464,8 +486,14 @@ if __name__ == "__main__":
         end_i = time.time()
         print("Finished", local_path, "in", end_i - start_i, "seconds")
         # delete the object if it was downloaded
-        if args.object_path.startswith("http"):
-            os.remove(local_path)
+        # if args.object_path.startswith("http"):
+        #     os.remove(local_path)
+        # Write the completed path to a file
+        # print()
+        
+        with open(os.path.join(args.base_dir, "completed_renders.txt"), "a") as file:
+            file.write(local_path + "\n")
+            
     except Exception as e:
         print("Failed to render", args.object_path)
         print(e)

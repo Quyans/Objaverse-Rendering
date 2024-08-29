@@ -13,7 +13,7 @@ from tqdm import tqdm
 root_dir = '/data/qys/objectverse-lvis/Lvis_rendering_cube_fixdistance'
 target_dir = '/data/qys/test/checkdir/'
 output_file = target_dir + 'folders_with_empty_alpha.txt'  # 保存子文件夹名字的文本文件
-num_threads = 1  # 线程数，可以根据你的系统调整
+num_threads = 10  # 线程数，可以根据你的系统调整
 
 # 用于记录子文件夹名字的列表
 empty_alpha_folders = []

@@ -1,0 +1,4 @@
+/data/qys/objectverse-lvis/objavese-lvis-subset_full/835eef6febbd46748cd3c39cc5a2f99d.glb
+/data/qys/objectverse-lvis/objavese-lvis-subset_full/7b07838985a947fda70036aafd46b3ef.glb
+/data/qys/objectverse-lvis/objavese-lvis-subset_full/a8805d4ce9aa4d239e5455243555f09c.glb
+/data/qys/objectverse-lvis/objavese-lvis-subset_full/a9fd23771a0d47b6806571601801deb7.glb
